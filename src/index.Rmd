@@ -1,0 +1,143 @@
+---
+title: "Inhaalslag Zeggekorfslak"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(sf)
+library(crosstalk)
+library(leaflet)
+library(leaflet.extras)
+library(leaflet.extras2)
+```
+
+Via de inhaalslag Zeggekorfslak wil het Instituut voor Natuur- en Bosonderzoek (INBO) in samenwerking met Natuur en Bos (ANB) en Natuurpunt Studie de verspreiding van de Zeggekorfslak in kaart brengen.
+
+De inhaalslag Zeggekorfslak maakt onderdeel uit van monitoringprogramma [meetnetten.be](https://www.meetnetten.be/).
+
+Hieronder vind je bijkomend kaartmateriaal om het zoeken naar de Zeggekorfslak te ondersteunen.
+
+## Prioritair te onderzoeken locaties
+
+De inhaalslag bestaat uit een groot aantal locaties die afgeleid zijn uit de kaart van het potentieel leefgebied van de Zeggekorfslak. 
+Om de kans op het vinden van de Zeggekorfslak te vergroten selecteren we 20 prioritair te onderzoeken locaties.
+Deze selectie is gebaseerd op de oppervlakte [Grote zeggenvegetaties](https://www.ecopedia.be/natuurstreefbeeld/natuurstreefbeeld-grote-zeggenvegetaties-rbbmc) binnen elke locatie. 
+Grote zeggenvegetaties is een vegetatietype dat onderdeel uitmaakt van het potentieel leefgebied van de Zeggekorfslak.
+Binnen dit vegetatietype is de kans op de aanwezigheid van de soort het grootst.
+Maar de Zeggekorfslak kan dus ook in andere vegetatietypes binnen het potentieel leefgebied voorkomen.
+
+Hieronder vind je een kaart met de prioritair te onderzoeken locaties (blauwe polygonen).
+De Grote zeggevegetaties worden in het groen weergegeven.
+De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
+Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
+
+
+```{r}
+locaties_prioritering <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_prioritering")
+
+locaties_prioritair <- locaties_prioritering %>%
+  filter(! locatie %in% c("Damvallei", "De Luysen - Mariahof - Sint-Maartensheide")) %>%
+  top_n(20, wt = area_rbbmc_ha) %>%
+  mutate(prioritair = TRUE)
+
+```
+
+```{r}
+overlay_locatie_rbbmc <-  read_sf("../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_rbbmc")
+
+overlay_locatie_rbbmc <- overlay_locatie_rbbmc %>%
+  st_join(select(locaties_prioritair, prioritair)) %>%
+  filter(!is.na(prioritair))
+```
+
+```{r}
+
+locaties_prioritair %>%
+  st_transform(4326) %>%
+  leaflet() %>%
+  addTiles(group = "Kaart") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satelliet") %>%
+  addPolygons(label = ~locatie, group = "Prioritaire locaties") %>%
+  # addPolygons(data = st_transform(overlay_locatie_leefgebied_ruim, 4326), group = "leefgebied_ruim", color = "blue", opacity = 0, fillOpacity = 1) %>%
+  addPolygons(data = st_transform(overlay_locatie_rbbmc, 4326), group = "Grote zeggenvegetaties", color = "green", opacity = 0, fillOpacity = 0.8) %>%
+  addSearchFeatures(
+    targetGroups = "Prioritaire locaties", # group should match addMarkers() group
+    options = searchFeaturesOptions(
+      zoom=16, openPopup = TRUE, firstTipSubmit = TRUE,
+      autoCollapse = TRUE, hideMarkerOnCollapse = FALSE
+    )) %>%
+  addResetMapButton() %>%
+  addLayersControl(baseGroups = c("Kaart", "Satelliet"),
+                   overlayGroups = c("Prioritaire locaties", "Grote zeggenvegetaties"),
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  addEasyButton(easyButton(
+    icon="fa-crosshairs", title="Locate Me",
+    onClick=JS("function(btn, map){ map.locate({setView: true}); }"))) %>%
+  addFullscreenControl() %>%
+  addEasyprint()
+```
+
+## Te herbezoeken locaties
+
+We selecteren ook een aantal te onderzoeken locaties waar de Zeggekorfslak al eerder werd waargenomen, maar waar de laatste waarneming dateert van 12 jaar geleden of ouder.
+Deze locaties zouden opnieuw onderzocht moeten worden om na te gaan of de soort er nog voorkomt.
+
+De locaties worden weergegeven in onderstaande kaart (blauwe polygonen).
+Ook de oorspronkelijke waarnemingen worden weergegeven (gele punten)
+De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
+Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
+
+```{r, message = FALSE}
+locaties_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_herbezoek")
+wnm_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "wnm_herbezoek")
+overlay_rbbmc_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "overlay_rbbmc_herbezoek")
+
+locaties_herbezoek_buffer <- locaties_herbezoek %>%
+  select(naam) %>%
+  st_buffer(dist = 160)
+
+wnm_herbezoek <- wnm_herbezoek %>%
+  st_join(locaties_herbezoek_buffer, largest = TRUE) %>%
+  filter(!is.na(naam))
+```
+
+
+```{r}
+locaties_herbezoek %>%
+  st_transform(4326) %>%
+  leaflet() %>%
+  addTiles(group = "Kaart") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satelliet") %>%
+  addPolygons(label = ~naam, group = "Te herbezoeken locaties") %>%
+  # addPolygons(data = st_transform(overlay_locatie_leefgebied_ruim, 4326), group = "leefgebied_ruim", color = "blue", opacity = 0, fillOpacity = 1) %>%
+  addPolygons(data = st_transform(overlay_rbbmc_herbezoek, 4326), group = "Grote zeggenvegetaties", color = "green", opacity = 0, fillOpacity = 0.8) %>%
+  addCircleMarkers(data = st_transform(wnm_herbezoek, crs = 4326), color = "yellow", weight = 3) %>%
+  addSearchFeatures(
+    targetGroups = "Te herbezoeken locaties", # group should match addMarkers() group
+    options = searchFeaturesOptions(
+      zoom=16, openPopup = TRUE, firstTipSubmit = TRUE,
+      autoCollapse = TRUE, hideMarkerOnCollapse = FALSE
+    )) %>%
+  addResetMapButton() %>%
+  addLayersControl(baseGroups = c("Kaart", "Satelliet"),
+                   overlayGroups = c("Te herbezoeken locaties", "Grote zeggenvegetaties"),
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  addEasyButton(easyButton(
+    icon="fa-crosshairs", title="Locate Me",
+    onClick=JS("function(btn, map){ map.locate({setView: true}); }"))) %>%
+  addFullscreenControl() %>%
+  addEasyprint()
+```
+
