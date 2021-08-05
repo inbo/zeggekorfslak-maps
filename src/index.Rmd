@@ -21,6 +21,7 @@ library(crosstalk)
 library(leaflet)
 library(leaflet.extras)
 library(leaflet.extras2)
+library(kableExtra)
 ```
 
 Via de inhaalslag Zeggekorfslak wil het Instituut voor Natuur- en Bosonderzoek (INBO) in samenwerking met Natuur en Bos (ANB) en Natuurpunt Studie de verspreiding van de Zeggekorfslak in kaart brengen.
@@ -38,10 +39,6 @@ Grote zeggenvegetaties is een vegetatietype dat onderdeel uitmaakt van het poten
 Binnen dit vegetatietype is de kans op de aanwezigheid van de soort het grootst.
 Maar de Zeggekorfslak kan dus ook in andere vegetatietypes binnen het potentieel leefgebied voorkomen.
 
-Hieronder vind je een kaart met de prioritair te onderzoeken locaties (blauwe polygonen).
-De Grote zeggevegetaties worden in het groen weergegeven.
-De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
-Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
 
 
 ```{r}
@@ -54,6 +51,20 @@ locaties_prioritair <- locaties_prioritering %>%
 
 ```
 
+Onderstaande tabel toont de geselecteerde prioritaire locaties gesorteerd volgens oppervlakte Grote zeggenvegetaties.
+
+```{r}
+locaties_prioritair %>%
+  st_drop_geometry() %>%
+  arrange(desc(area_rbbmc_ha)) %>%
+  select(Locatie = locatie, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha) %>%
+  kable(caption = "Prioritair te onderzoeken locaties",
+        align = "lc") %>%
+  kable_styling(full_width = FALSE)
+  
+```
+
+
 ```{r}
 overlay_locatie_rbbmc <-  read_sf("../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_rbbmc")
 
@@ -61,6 +72,12 @@ overlay_locatie_rbbmc <- overlay_locatie_rbbmc %>%
   st_join(select(locaties_prioritair, prioritair)) %>%
   filter(!is.na(prioritair))
 ```
+
+Hieronder vind je een kaart met de prioritair te onderzoeken locaties (blauwe polygonen).
+De Grote zeggevegetaties worden in het groen weergegeven.
+De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
+Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
+
 
 ```{r}
 
@@ -91,13 +108,10 @@ locaties_prioritair %>%
 
 ## Te herbezoeken locaties
 
-We selecteren ook een aantal te onderzoeken locaties waar de Zeggekorfslak al eerder werd waargenomen, maar waar de laatste waarneming dateert van 12 jaar geleden of ouder.
+We selecteren ook een aantal te onderzoeken locaties waar de Zeggekorfslak al eerder werd waargenomen, maar waar de laatste waarneming dateert van 12 jaar geleden of ouder (zie onderstaande tabel).
 Deze locaties zouden opnieuw onderzocht moeten worden om na te gaan of de soort er nog voorkomt.
 
-De locaties worden weergegeven in onderstaande kaart (blauwe polygonen).
-Ook de oorspronkelijke waarnemingen worden weergegeven (gele punten)
-De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
-Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
+
 
 ```{r, message = FALSE}
 locaties_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_herbezoek")
@@ -113,6 +127,20 @@ wnm_herbezoek <- wnm_herbezoek %>%
   filter(!is.na(naam))
 ```
 
+```{r}
+locaties_herbezoek %>%
+  arrange(naam) %>%
+  st_drop_geometry() %>%
+  select(Locatie = naam) %>%
+  kable(caption = "Te herbezoeken locaties") %>%
+  kable_styling(full_width = FALSE)
+```
+
+
+De locaties worden weergegeven in onderstaande kaart (blauwe polygonen).
+Ook de oorspronkelijke waarnemingen worden weergegeven (gele punten)
+De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
+Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
 
 ```{r}
 locaties_herbezoek %>%
@@ -127,8 +155,8 @@ locaties_herbezoek %>%
   addSearchFeatures(
     targetGroups = "Te herbezoeken locaties", # group should match addMarkers() group
     options = searchFeaturesOptions(
-      zoom=16, openPopup = TRUE, firstTipSubmit = TRUE,
-      autoCollapse = TRUE, hideMarkerOnCollapse = FALSE
+      zoom=15, openPopup = TRUE, firstTipSubmit = TRUE,
+      autoCollapse = TRUE, hideMarkerOnCollapse = TRUE
     )) %>%
   addResetMapButton() %>%
   addLayersControl(baseGroups = c("Kaart", "Satelliet"),
