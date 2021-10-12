@@ -22,6 +22,7 @@ library(leaflet)
 library(leaflet.extras)
 library(leaflet.extras2)
 library(kableExtra)
+library(units)
 ```
 
 Via de inhaalslag Zeggekorfslak wil het Instituut voor Natuur- en Bosonderzoek (INBO) in samenwerking met Natuur en Bos (ANB) en Natuurpunt Studie de verspreiding van de Zeggekorfslak in kaart brengen.
@@ -47,7 +48,9 @@ locaties_prioritering <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg"
 locaties_prioritair <- locaties_prioritering %>%
   filter(! locatie %in% c("Damvallei", "De Luysen - Mariahof - Sint-Maartensheide")) %>%
   top_n(20, wt = area_rbbmc_ha) %>%
-  mutate(prioritair = TRUE)
+  mutate(prioritair = TRUE,
+         area_rbbmc_ha = round(area_rbbmc_ha, 2),
+         area_leefgebied_nieuw_ha = round(area_leefgebied_nieuw_ha, 2))
 
 ```
 
@@ -57,7 +60,7 @@ Onderstaande tabel toont de geselecteerde prioritaire locaties gesorteerd volgen
 locaties_prioritair %>%
   st_drop_geometry() %>%
   arrange(desc(area_rbbmc_ha)) %>%
-  select(Locatie = locatie, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha) %>%
+  select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha) %>%
   kable(caption = "Prioritair te onderzoeken locaties",
         align = "lc") %>%
   kable_styling(full_width = FALSE)
@@ -128,10 +131,16 @@ wnm_herbezoek <- wnm_herbezoek %>%
 ```
 
 ```{r}
+
+
+locaties_herbezoek <- locaties_herbezoek %>%
+  mutate(area_ha = round(drop_units(st_area(geom))/10000, 1),
+         n_punten = pmax(5, round(area_ha * 15/ 100)))
+
 locaties_herbezoek %>%
   arrange(naam) %>%
   st_drop_geometry() %>%
-  select(Locatie = naam) %>%
+  select(Locatie = naam, "Oppervlakte leefgebied (ha)" = area_ha, "Aantal zoekpunten" = n_punten) %>%
   kable(caption = "Te herbezoeken locaties") %>%
   kable_styling(full_width = FALSE)
 ```
