@@ -50,7 +50,8 @@ locaties_prioritair <- locaties_prioritering %>%
   top_n(20, wt = area_rbbmc_ha) %>%
   mutate(prioritair = TRUE,
          area_rbbmc_ha = round(area_rbbmc_ha, 2),
-         area_leefgebied_nieuw_ha = round(area_leefgebied_nieuw_ha, 2))
+         area_leefgebied_nieuw_ha = round(area_leefgebied_nieuw_ha, 2),
+         n_punten = round(pmax(5, area_leefgebied_nieuw_ha * 15/100)))
 
 ```
 
@@ -60,7 +61,7 @@ Onderstaande tabel toont de geselecteerde prioritaire locaties gesorteerd volgen
 locaties_prioritair %>%
   st_drop_geometry() %>%
   arrange(desc(area_rbbmc_ha)) %>%
-  select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha) %>%
+  select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha, "Aantal zoekpunten" = n_punten) %>%
   kable(caption = "Prioritair te onderzoeken locaties",
         align = "lc") %>%
   kable_styling(full_width = FALSE)
