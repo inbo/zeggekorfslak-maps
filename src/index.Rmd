@@ -43,25 +43,36 @@ Maar de Zeggekorfslak kan dus ook in andere vegetatietypes binnen het potentieel
 
 
 ```{r}
+locaties_status <- read_csv2("../data/zeggekorfslak_status_locatie.csv") %>%
+  mutate(status = ifelse(is.na(locatie_status), "niet bezocht", 
+                                 ifelse(locatie_status == "locatie ongeschikt", "leefgebied ongeschikt",
+                                        ifelse(locatie_status == "aanwezig_goedgekeurd", "aanwezig", 
+                                               locatie_status)))) %>%
+  select(locatie, status, n_punten_bezocht = n_punten)
+
 locaties_prioritering <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_prioritering")
 
 locaties_prioritair <- locaties_prioritering %>%
-  filter(! locatie %in% c("Damvallei", "De Luysen - Mariahof - Sint-Maartensheide")) %>%
+  filter(!locatie %in% c("Damvallei", "De Luysen - Mariahof - Sint-Maartensheide")) %>%
   top_n(20, wt = area_rbbmc_ha) %>%
   mutate(prioritair = TRUE,
          area_rbbmc_ha = round(area_rbbmc_ha, 2),
          area_leefgebied_nieuw_ha = round(area_leefgebied_nieuw_ha, 2),
-         n_punten = round(pmax(5, area_leefgebied_nieuw_ha * 15/100)))
+         n_punten = round(pmax(5, area_leefgebied_nieuw_ha * 15/100))) %>%
+  left_join(locaties_status, by = "locatie") %>%
+  mutate(status = ifelse(is.na(status), "niet bezocht", status),
+         n_punten_bezocht = ifelse(is.na(n_punten_bezocht), 0, n_punten_bezocht))
 
 ```
 
 Onderstaande tabel toont de geselecteerde prioritaire locaties gesorteerd volgens oppervlakte Grote zeggenvegetaties.
+De tabel toont ook welke locaties al bezocht werden in kader van de inhaalslag en of de soort al dan niet werd waargenomen.
 
 ```{r}
 locaties_prioritair %>%
   st_drop_geometry() %>%
   arrange(desc(area_rbbmc_ha)) %>%
-  select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha, "Aantal zoekpunten" = n_punten) %>%
+  select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha, "Aantal zoekpunten" = n_punten, "Aantal zoekpunten bezocht" = n_punten_bezocht, "Conclusie inventarisatie" = status) %>%
   kable(caption = "Prioritair te onderzoeken locaties",
         align = "lc") %>%
   kable_styling(full_width = FALSE)
@@ -118,8 +129,10 @@ Deze locaties zouden opnieuw onderzocht moeten worden om na te gaan of de soort 
 
 
 ```{r, message = FALSE}
-locaties_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_herbezoek")
-wnm_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "wnm_herbezoek")
+locaties_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_herbezoek") %>%
+  filter(!is.na(naam))
+wnm_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "wnm_herbezoek") %>%
+  st_transform(crs = 4326)
 overlay_rbbmc_herbezoek <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg", layer = "overlay_rbbmc_herbezoek")
 
 locaties_herbezoek_buffer <- locaties_herbezoek %>%
@@ -136,7 +149,7 @@ wnm_herbezoek <- wnm_herbezoek %>%
 
 locaties_herbezoek <- locaties_herbezoek %>%
   mutate(area_ha = round(drop_units(st_area(geom))/10000, 1),
-         n_punten = pmax(5, round(area_ha * 15/ 100)))
+         n_punten = pmax(5, round(area_ha * 15 / 100)))
 
 locaties_herbezoek %>%
   arrange(naam) %>%
