@@ -23,6 +23,7 @@ library(leaflet.extras)
 library(leaflet.extras2)
 library(kableExtra)
 library(units)
+library(DT)
 ```
 
 Via de inhaalslag Zeggekorfslak wil het Instituut voor Natuur- en Bosonderzoek (INBO) in samenwerking met Natuur en Bos (ANB) en Natuurpunt Studie de verspreiding van de Zeggekorfslak in kaart brengen.
@@ -34,7 +35,7 @@ Hieronder vind je bijkomend kaartmateriaal om het zoeken naar de Zeggekorfslak t
 ## Prioritair te onderzoeken locaties
 
 De inhaalslag bestaat uit een groot aantal locaties die afgeleid zijn uit de kaart van het potentieel leefgebied van de Zeggekorfslak. 
-Om de kans op het vinden van de Zeggekorfslak te vergroten selecteren we 20 prioritair te onderzoeken locaties.
+Om de kans op het vinden van de Zeggekorfslak te vergroten selecteren we 40 prioritair te onderzoeken locaties.
 Deze selectie is gebaseerd op de oppervlakte [Grote zeggenvegetaties](https://www.ecopedia.be/natuurstreefbeeld/natuurstreefbeeld-grote-zeggenvegetaties-rbbmc) binnen elke locatie. 
 Grote zeggenvegetaties is een vegetatietype dat onderdeel uitmaakt van het potentieel leefgebied van de Zeggekorfslak.
 Binnen dit vegetatietype is de kans op de aanwezigheid van de soort het grootst.
@@ -54,7 +55,7 @@ locaties_prioritering <- read_sf(dsn = "../data/zeggekorfslak_prioritering.gpkg"
 
 locaties_prioritair <- locaties_prioritering %>%
   filter(!locatie %in% c("Damvallei", "De Luysen - Mariahof - Sint-Maartensheide")) %>%
-  top_n(20, wt = area_rbbmc_ha) %>%
+  top_n(40, wt = area_rbbmc_ha) %>%
   mutate(prioritair = TRUE,
          area_rbbmc_ha = round(area_rbbmc_ha, 2),
          area_leefgebied_nieuw_ha = round(area_leefgebied_nieuw_ha, 2),
@@ -73,9 +74,8 @@ locaties_prioritair %>%
   st_drop_geometry() %>%
   arrange(desc(area_rbbmc_ha)) %>%
   select(Locatie = locatie, "Oppervlakte leefgebied (ha)" = area_leefgebied_nieuw_ha, "Oppervlakte grote zeggenvegetatie (ha)" = area_rbbmc_ha, "Aantal zoekpunten" = n_punten, "Aantal zoekpunten bezocht" = n_punten_bezocht, "Conclusie inventarisatie" = status) %>%
-  kable(caption = "Prioritair te onderzoeken locaties",
-        align = "lc") %>%
-  kable_styling(full_width = FALSE)
+  datatable(rownames = FALSE,
+            filter = "top")
   
 ```
 
@@ -83,12 +83,15 @@ locaties_prioritair %>%
 ```{r}
 overlay_locatie_rbbmc <-  read_sf("../data/zeggekorfslak_prioritering.gpkg", layer = "locaties_rbbmc")
 
+locaties_prioritair_todo <- locaties_prioritair %>%
+  filter(status == "niet bezocht")
+
 overlay_locatie_rbbmc <- overlay_locatie_rbbmc %>%
-  st_join(select(locaties_prioritair, prioritair)) %>%
+  st_join(dplyr::select(locaties_prioritair_todo, prioritair)) %>%
   filter(!is.na(prioritair))
 ```
 
-Hieronder vind je een kaart met de prioritair te onderzoeken locaties (blauwe polygonen).
+Hieronder vind je een kaart met de prioritaire locaties die nog niet onderzocht werden (blauwe polygonen).
 De Grote zeggevegetaties worden in het groen weergegeven.
 De naam van de locaties krijg je te zien als je met de muis over een polygoon beweegt.
 Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
@@ -96,7 +99,7 @@ Je kan ook een bepaalde locatie zoeken via het vergrootglas-icoon.
 
 ```{r}
 
-locaties_prioritair %>%
+locaties_prioritair_todo %>%
   st_transform(4326) %>%
   leaflet() %>%
   addTiles(group = "Kaart") %>%
